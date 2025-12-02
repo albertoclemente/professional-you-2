@@ -233,10 +233,12 @@ if __name__ == "__main__":
         font-size: 2.5em;
         margin-bottom: 10px;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        color: white !important;
     }
     .header-subtitle {
         font-size: 1.2em;
         opacity: 0.9;
+        color: white !important;
     }
     .info-text {
         color: #4a5568;
