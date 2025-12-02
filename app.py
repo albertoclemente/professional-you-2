@@ -165,7 +165,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         done = False
         response = None
         while not done:
-            response = self.openai.chat.completions.create(model="gpt-4o-mini", messages=messages, tools=tools)
+            response = self.openai.chat.completions.create(model="gpt-4o-mini", messages=messages, tools=tools, max_tokens=300)
             if response.choices[0].finish_reason=="tool_calls":
                 message = response.choices[0].message
                 tool_calls = message.tool_calls
@@ -183,7 +183,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         # First, handle any tool calls (non-streaming)
         done = False
         while not done:
-            response = self.openai.chat.completions.create(model="gpt-4o-mini", messages=messages, tools=tools)
+            response = self.openai.chat.completions.create(model="gpt-4o-mini", messages=messages, tools=tools, max_tokens=300)
             finish_reason = response.choices[0].finish_reason
             
             if finish_reason == "tool_calls":
@@ -200,7 +200,8 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         stream = self.openai.chat.completions.create(
             model="gpt-4o-mini", 
             messages=messages, 
-            stream=True
+            stream=True,
+            max_tokens=300
         )
         
         for chunk in stream:
@@ -214,8 +215,78 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 if __name__ == "__main__":
     me = Me()
     
+    # Custom CSS for better styling
+    custom_css = """
+    .gradio-container {
+        max-width: 1200px !important;
+        margin: auto !important;
+    }
+    .header-container {
+        text-align: center;
+        padding: 20px;
+        background: linear-gradient(135deg, #2c5364 0%, #203a43 50%, #0f2027 100%);
+        border-radius: 15px;
+        margin-bottom: 20px;
+        color: white;
+    }
+    .header-title {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .header-subtitle {
+        font-size: 1.2em;
+        opacity: 0.9;
+    }
+    .info-text {
+        color: #4a5568;
+        font-size: 0.95em;
+        line-height: 1.6;
+    }
+    .info-text h3 {
+        color: #2d3748;
+        margin-bottom: 8px;
+    }
+    .info-text ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+    .example-btn {
+        margin: 5px !important;
+        border-radius: 20px !important;
+    }
+    .chat-container {
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #48bb78;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    footer {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-size: 0.9em;
+    }
+    """
+    
     def respond_stream(message, chat_history):
         """Stream the response character by character"""
+        if not message.strip():
+            yield "", chat_history, None
+            return
+            
         chat_history.append({"role": "user", "content": message})
         chat_history.append({"role": "assistant", "content": ""})
         
@@ -237,20 +308,121 @@ if __name__ == "__main__":
                 return text_to_speech(last_message["content"])
         return None
     
-    with gr.Blocks() as demo:
-        gr.Markdown("# Professional You 2.0 - Talk to My AI Clone 🤖🎙️")
+    def use_example(example_text, chat_history):
+        """Handle example button clicks"""
+        return example_text
+    
+    with gr.Blocks(css=custom_css, theme=gr.themes.Soft(
+        primary_hue="teal",
+        secondary_hue="cyan",
+        neutral_hue="gray"
+    )) as demo:
         
-        chatbot = gr.Chatbot(type="messages", height=400)
-        audio_output = gr.Audio(label="🔊 Voice Response (Your Cloned Voice)", autoplay=True)
-        msg = gr.Textbox(placeholder="Type your message here...", label="Your Message")
+        # Header Section
+        gr.HTML("""
+        <div class="header-container">
+            <div class="header-title">🤖 Professional You 2.0</div>
+            <div class="header-subtitle">Talk to My AI Clone • Powered by GPT-4 & ElevenLabs Voice Cloning</div>
+        </div>
+        """)
         
         with gr.Row():
-            clear = gr.Button("Clear Chat")
-            generate_voice = gr.Button("🔊 Generate Voice for Last Response")
+            # Left Sidebar - Info Panel (clean text, no cards)
+            with gr.Column(scale=1):
+                gr.Markdown("""
+### 👋 About Me
+
+Hi! I'm **Alberto Clemente**'s AI clone. I can tell you about his professional background, skills, experience, and career journey.
+
+---
+
+### 💡 What I Can Help With
+
+- Professional background
+- Technical skills & expertise  
+- Work experience
+- Career highlights
+- Contact & scheduling
+
+---
+
+### 🎤 Voice Feature
+
+Click the voice button to hear responses in Alberto's cloned voice!
+
+---
+
+### 📊 Status
+
+🟢 AI Clone Online  
+🟢 Voice Enabled
+                """)
+            
+            # Main Chat Area
+            with gr.Column(scale=3):
+                chatbot = gr.Chatbot(
+                    type="messages", 
+                    height=450,
+                    label="💬 Chat",
+                    avatar_images=(None, "https://api.dicebear.com/7.x/bottts/svg?seed=alberto"),
+                    elem_classes=["chat-container"]
+                )
+                
+                # Example Questions
+                gr.Markdown("### 🚀 Quick Questions")
+                with gr.Row():
+                    example1 = gr.Button("What's your background?", size="sm", variant="secondary")
+                    example2 = gr.Button("Tell me about your skills", size="sm", variant="secondary")
+                    example3 = gr.Button("What are you working on?", size="sm", variant="secondary")
+                with gr.Row():
+                    example4 = gr.Button("How can I contact you?", size="sm", variant="secondary")
+                    example5 = gr.Button("What makes you unique?", size="sm", variant="secondary")
+                    example6 = gr.Button("Career highlights?", size="sm", variant="secondary")
+                
+                # Input Area
+                with gr.Row():
+                    msg = gr.Textbox(
+                        placeholder="💭 Ask me anything about Alberto's professional journey...",
+                        label="",
+                        scale=4,
+                        container=False
+                    )
+                    submit_btn = gr.Button("Send 📤", variant="primary", scale=1)
+                
+                # Audio Output
+                with gr.Row():
+                    audio_output = gr.Audio(
+                        label="🎙️ Voice Response",
+                        autoplay=True,
+                        elem_classes=["audio-container"]
+                    )
+                
+                # Action Buttons
+                with gr.Row():
+                    generate_voice = gr.Button("🔊 Replay Voice", variant="secondary")
+                    clear = gr.Button("🗑️ Clear Chat", variant="stop")
         
+        # Footer
+        gr.HTML("""
+        <footer>
+            <p>Built with ❤️ using OpenAI GPT-4o-mini & ElevenLabs Voice Cloning</p>
+            <p>© 2024 Alberto Clemente • <a href="https://github.com/albertoclemente" target="_blank">GitHub</a></p>
+        </footer>
+        """)
+        
+        # Event handlers
         msg.submit(respond_stream, [msg, chatbot], [msg, chatbot, audio_output])
+        submit_btn.click(respond_stream, [msg, chatbot], [msg, chatbot, audio_output])
         clear.click(clear_chat, outputs=[chatbot, audio_output])
         generate_voice.click(generate_voice_click, inputs=[chatbot], outputs=[audio_output])
+        
+        # Example button handlers
+        example1.click(lambda: "What's your professional background?", outputs=[msg])
+        example2.click(lambda: "Tell me about your technical skills and expertise", outputs=[msg])
+        example3.click(lambda: "What projects are you currently working on?", outputs=[msg])
+        example4.click(lambda: "How can I get in touch with you?", outputs=[msg])
+        example5.click(lambda: "What makes you unique as a professional?", outputs=[msg])
+        example6.click(lambda: "What are your career highlights?", outputs=[msg])
     
     demo.launch()
     
